@@ -21,6 +21,7 @@
 %global module_geoip2		3.4
 %global module_echo		0.63
 %global module_modsecurity	1.0.4
+%global module_security_headers	0.1.2
 
 %global module_dir_openssl		openssl-%{openssl_version}
 %global module_dir_pagespeed		ngx_pagespeed-%{module_ps_version}
@@ -33,6 +34,7 @@
 %global module_dir_http_geoip2 		ngx_http_geoip2_module-%{module_geoip2}
 %global module_dir_echo			ngx_echo-%{module_echo}
 %global module_dir_modsecurity		ngx_modsecurity-%{module_modsecurity}
+%global module_dir_security_headers ngx_security_headers-%{module_security_headers}
 
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
 
@@ -105,6 +107,7 @@ Source107:					https://github.com/leev/ngx_http_geoip2_module/archive/%{module_g
 Source108:					https://github.com/openresty/echo-nginx-module/archive/v%{module_echo}/ngx_echo-%{module_echo}.tar.gz
 Source109:					https://github.com/owasp-modsecurity/ModSecurity-nginx/archive/v%{module_modsecurity}/ngx_modsecurity-%{module_modsecurity}.tar.gz
 Source110:					https://github.com/google/brotli/archive/v%{module_brotli_deps}/ngx_brotli_deps-%{module_brotli_deps}.tar.gz
+Source111:					https://github.com/GetPageSpeed/ngx_security_headers/archive/refs/tags/%{module_security_headers}.tar.gz
 
 Patch0:						nginx-version.patch
 Patch1:						ngx_cache_purge-fix-compatibility-with-nginx-1.11.6.patch
@@ -211,6 +214,7 @@ memory usage.
 %source_prepare %{SOURCE106} modules/%{module_dir_vts}
 %source_prepare %{SOURCE107} modules/%{module_dir_http_geoip2}
 %source_prepare %{SOURCE108} modules/%{module_dir_echo}
+%source_prepare %{SOURCE108} modules/%{module_dir_security_headers}
 
 %if %{with modsecurity}
 	%source_prepare %{SOURCE109} modules/%{module_dir_modsecurity}
@@ -298,7 +302,8 @@ export PSOL_BUILDTYPE=Release
 	--add-module=modules/%{module_dir_brotli} \
 	--add-module=modules/%{module_dir_vts} \
 	--add-module=modules/%{module_dir_http_geoip2} \
-	--add-module=modules/%{module_dir_echo}
+	--add-module=modules/%{module_dir_echo} \
+	--add-dynamic-module=modules/%{module_dir_security_headers}
 
 make
 
