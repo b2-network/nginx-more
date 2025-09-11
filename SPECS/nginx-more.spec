@@ -179,6 +179,13 @@ Requires:					nginx-more = %{version}-%{release}
 %{summary}.
 %endif
 
+%package module-security_headers
+Summary:                    Nginx Security Headers module
+Requires:                   nginx-more = %{version}-%{release}
+
+%description module-security_headers
+%{summary}.
+
 Conflicts:					nginx
 
 Provides:					webserver
@@ -214,7 +221,7 @@ memory usage.
 %source_prepare %{SOURCE106} modules/%{module_dir_vts}
 %source_prepare %{SOURCE107} modules/%{module_dir_http_geoip2}
 %source_prepare %{SOURCE108} modules/%{module_dir_echo}
-%source_prepare %{SOURCE108} modules/%{module_dir_security_headers}
+%source_prepare %{SOURCE111} modules/%{module_dir_security_headers}
 
 %if %{with modsecurity}
 	%source_prepare %{SOURCE109} modules/%{module_dir_modsecurity}
@@ -362,6 +369,8 @@ install -p -D -m 0644 %{_builddir}/nginx-%{version}/man/nginx.8 %{buildroot}%{_m
 %if %{with modsecurity}
 	echo 'load_module "%{_libdir}/nginx/modules/ngx_http_modsecurity_module.so";' > %{buildroot}%{_datadir}/nginx/modules/module-modsecurity.conf
 %endif
+echo 'load_module "%{_libdir}/nginx/modules/ngx_http_security_headers_module.so";' > %{buildroot}%{_datadir}/nginx/modules/module-security-headers.conf
+
 
 %pre
 getent group %{nginx_group} > /dev/null || groupadd -r %{nginx_group}
@@ -481,6 +490,8 @@ fi
 %{_datadir}/nginx/modules/module-modsecurity.conf
 %{_libdir}/nginx/modules/ngx_http_modsecurity_module.so
 %endif
+%{_libdir}/nginx/modules/ngx_http_security_headers_module.so
+%{_datadir}/nginx/modules/module-security-headers.conf
 
 %changelog
 * Thu Sep 4 2025 Karl Johnson <karljohnson.it@gmail.com> 1.29.1-1
