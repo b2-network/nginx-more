@@ -9,12 +9,12 @@
 %global nginx_webroot		%{nginx_datadir}/html
 %global gcc_version			8
 %global pcre_version		pcre2
-%global openssl_version		3.5.2
+%global openssl_version		3.5.4
 %global module_ps_version	1.13.35.2
 %global module_ps_commit		13bee9d
 %global module_psol		%{module_ps_version}-x64
 %global module_headers_more	0.39
-%global module_cache_purge	2.3
+%global module_cache_purge	2.5.3
 %global module_vts		0.2.4
 %global module_brotli		1.0.0rc-2-g6e97
 %global module_brotli_deps	1.0.9-35-gf4153a0
@@ -36,13 +36,15 @@
 %global module_dir_modsecurity		ngx_modsecurity-%{module_modsecurity}
 %global module_dir_security_headers ngx_security_headers-%{module_security_headers}
 
+%global debug_package %{nil}
+
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
 
 %bcond_with					modsecurity
 %bcond_with					pagespeed
 
 Name:						nginx-more
-Version:					1.29.1
+Version:					1.29.2
 Release:					1%{?dist}
 
 Summary:					A high performance web server and reverse proxy server
@@ -93,14 +95,11 @@ Source39:					fpm-wordpress-sub-cache-users.conf
 Source40:					mailgun-tracking.conf
 
 
-# Module sources
-# https://docs.fedoraproject.org/en-US/packaging-guidelines/SourceURL/#_git_tags
-# https://docs.fedoraproject.org/en-US/packaging-guidelines/SourceURL/#_troublesome_urls
 Source100:					https://github.com/openssl/openssl/releases/download/openssl-%{openssl_version}/openssl-%{openssl_version}.tar.gz
 Source101:					https://github.com/apache/incubator-pagespeed-ngx/archive/%{module_ps_commit}/ngx_pagespeed-%{module_ps_version}.tar.gz
 Source102:					https://dl.google.com/dl/page-speed/psol/%{module_psol}.tar.gz#/psol-%{module_psol}.tar.gz
 Source103:					https://github.com/openresty/headers-more-nginx-module/archive/v%{module_headers_more}/ngx_headers_more-%{module_headers_more}.tar.gz
-Source104:					https://github.com/FRiCKLE/ngx_cache_purge/archive/%{module_cache_purge}/ngx_cache_purge-%{module_cache_purge}.tar.gz
+Source104:					https://github.com/nginx-modules/ngx_cache_purge/archive/%{module_cache_purge}/ngx_cache_purge-%{module_cache_purge}.tar.gz
 Source105:					https://github.com/google/ngx_brotli/archive/v%{module_brotli}/ngx_brotli-%{module_brotli}.tar.gz
 Source106:					https://github.com/vozlt/nginx-module-vts/archive/v%{module_vts}/ngx_module_vts-%{module_vts}.tar.gz
 Source107:					https://github.com/leev/ngx_http_geoip2_module/archive/%{module_geoip2}/ngx_http_geoip2_module-%{module_geoip2}.tar.gz
@@ -110,9 +109,7 @@ Source110:					https://github.com/google/brotli/archive/v%{module_brotli_deps}/n
 Source111:					https://github.com/GetPageSpeed/ngx_security_headers/archive/refs/tags/%{module_security_headers}.tar.gz
 
 Patch0:						nginx-version.patch
-Patch1:						ngx_cache_purge-fix-compatibility-with-nginx-1.11.6.patch
-Patch3:						ngx_dynamic-tls-records-1.27.5.patch
-Patch4:						ngx_cache_purge-fix-compatibility-with-nginx-1.19.3.patch
+Patch1:						ngx_dynamic-tls-records-1.29.2.patch
 
 
 BuildRequires:				libxslt-devel
@@ -123,8 +120,10 @@ BuildRequires:				gd-devel
 BuildRequires:				httpd-devel
 BuildRequires:				libuuid-devel
 BuildRequires:				libmaxminddb-devel
-BuildRequires:				perl-IPC-Cmd
 BuildRequires:				perl-Data-Dumper
+BuildRequires:				perl-IPC-Cmd
+BuildRequires:				perl-Time-Piece
+BuildRequires:				perl-Getopt-Long
 BuildRequires:				gcc
 BuildRequires:				make
 
@@ -138,15 +137,15 @@ BuildRequires:				GeoIP-devel
 %endif
 
 %if 0%{?rhel} == 8
-BuildRequires:				GeoIP-devel perl-Getopt-Long
+BuildRequires:				GeoIP-devel
 %endif
 
 %if 0%{?rhel} == 9
-BuildRequires:				perl-File-Compare perl-File-Copy perl-FindBin perl-Getopt-Long perl-IPC-Cmd perl-lib
+BuildRequires:				perl-File-Compare perl-File-Copy perl-FindBin perl-lib
 %endif
 
 %if 0%{?rhel} == 10
-BuildRequires:				perl-File-Compare perl-File-Copy perl-FindBin perl-Getopt-Long perl-IPC-Cmd perl-lib
+BuildRequires:				perl-File-Compare perl-File-Copy perl-FindBin perl-lib
 %endif
 
 Requires:					gd
@@ -227,13 +226,10 @@ memory usage.
 	%source_prepare %{SOURCE109} modules/%{module_dir_modsecurity}
 %endif
 
-%{__sed} -i 's_@CACHEPVER@_%{module_cache_purge}_' %{PATCH1}
-%{__sed} -i 's_@CACHEPVER@_%{module_cache_purge}_' %{PATCH4}
 
 %patch0 -p0
-%patch1 -p0
-%patch3 -p1
-%patch4 -p0
+%patch1 -p1
+
 
 %build
 export DESTDIR=%{buildroot}
@@ -291,12 +287,13 @@ export PSOL_BUILDTYPE=Release
 	--with-stream_ssl_preread_module \
 	--with-debug \
 	--with-cc-opt="%{optflags} $(%{pcre_version}-config --cflags) -DTCP_FASTOPEN=23" \
+	--with-ld-opt="$RPM_LD_FLAGS -Wl,-E -O2" \
 	%if 0%{?rhel} <= 7
 		--with-cc="/opt/rh/devtoolset-%{gcc_version}/root/usr/bin/gcc" \
 	%endif
 	--with-openssl=modules/%{module_dir_openssl} \
 	%if 0%{?rhel} >= 8
-		--with-openssl-opt=enable-ktls \
+		--with-openssl-opt="-fno-lto -fPIC enable-ktls" \
 	%endif
 	%if %{with modsecurity}
 		--add-dynamic-module=modules/%{module_dir_modsecurity} \
@@ -494,9 +491,15 @@ fi
 %{_datadir}/nginx/modules/module-security-headers.conf
 
 %changelog
-* Thu Sep 4 2025 Karl Johnson <karljohnson.it@gmail.com> 1.29.1-1
-- Upgrade nginx to 1.29.1
-- Refactor CI
+* Wed Oct 8 2025 Karl Johnson <karljohnson.it@gmail.com> 1.29.2-1
+- Upgrade nginx to 1.29.2
+- Bump OpenSSL to 3.5.4
+- Bump Cache Purge to 2.5.3
+- Use new compatible TLS Dynamic Record patch
+- Add ld-opts to nginx configure
+- Disable LTO when building OpenSSL
+- Refactor Github Actions
+- Remove nginx debug packages
 
 * Tue Sep 2 2025 Karl Johnson <karljohnson.it@gmail.com> 1.28.0-2
 - Add el10 support
